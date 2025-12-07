@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pengurusan Kurikulum SKSPG - Sistem Guru Ganti</title>
+    
+    <!-- Libraries -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
+    
+    <style>
+        /* Custom Fonts & Theme */
+        @import url('https://fonts.googleapis.com/css2?family=Arial:wght@900&display=swap');
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #ffffff;
+        }
+
+        .header-glow {
+            background: linear-gradient(135deg, #0a1128 0%, #1e3a8a 50%, #172554 100%);
+            box-shadow: 0 4px 15px rgba(30, 58, 138, 0.5);
+            color: white;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+        }
+
+        .title-font {
+            font-family: 'Arial Black', 'Arial Bold', sans-serif;
+            font-weight: 900;
+        }
+
+        .btn-primary {
+            background: linear-gradient(to right, #1e40af, #1e3a8a);
+            transition: all 0.3s ease;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(30, 58, 138, 0.4);
+        }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.95);
+            border: 1px solid #e5e7eb;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Print/PDF Specific helper */
+        .hidden-print {
+            display: none;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="header-glow py-6 px-4 mb-8">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-4">
+                <img src="https://i.postimg.cc/rw4NFjkh/photo-2025-05-06-02-07-23.jpg" alt="Logo Sekolah" class="h-20 w-auto rounded-full border-2 border-white/20 shadow-lg">
+                <div>
+                    <h1 class="text-2xl md:text-3xl title-font tracking-tight">PENGURUSAN KURIKULUM SKSPG</h1>
+                    <p class="text-blue-200 text-sm md:text-base font-medium tracking-wide">SISTEM GURU GANTI</p>
+                </div>
+            </div>
+            <div class="text-right hidden md:block">
+                <p class="text-xs text-blue-300">SK Sapagaya Kinabatangan</p>
+                <p class="text-xs text-blue-300" id="current-date"></p>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-grow max-w-7xl mx-auto w-full px-4 space-y-8">
+        
+        <!-- Step 1: Input Section -->
+        <section class="glass-panel rounded-xl p-6 md:p-8">
+            <div class="border-b border-gray-200 pb-4 mb-6">
+                <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2">
+                    <span class="bg-blue-900 text-white w-8 h-8 flex items-center justify-center rounded-full text-sm">1</span>
+                    Maklumat Ketidakhadiran
+                </h2>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+                <div class="form-group">
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Tarikh</label>
+                    <input type="date" id="dateInput" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-900 focus:border-blue-900 outline-none transition" onchange="detectDay()">
+                </div>
+                
+                <div class="form-group">
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Hari</label>
+                    <input type="text" id="dayDisplay" class="w-full px-4 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-500 cursor-not-allowed" readonly>
+                </div>
+
+                <div class="form-group lg:col-span-2"> <!-- Nama Guru ambil space lebih -->
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Nama Guru Tidak Hadir</label>
+                    <select id="teacherSelect" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-900 focus:border-blue-900 outline-none">
+                        <option value="">-- Pilih Guru --</option>
+                        <!-- Options populated by JS -->
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Sebab</label>
+                    <select id="reasonSelect" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-900 outline-none">
+                        <option value="Cuti Rehat Khas">Cuti Rehat Khas</option>
+                        <option value="Cuti Sakit">Cuti Sakit</option>
+                        <option value="Bengkel / Mesyuarat / Tugas Rasmi">Urusan Rasmi / Bengkel</option>
+                        <option value="Cuti Tanpa Gaji">Cuti Tanpa Gaji</option>
+                        <option value="Lain-lain">Lain-lain</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="mt-6 flex justify-end">
+                <button onclick="addAbsentTeacher()" class="btn-primary text-white font-bold py-2 px-6 rounded-lg shadow-md flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clip-rule="evenodd" /></svg>
+                    Tambah Ke Senarai
+                </button>
+            </div>
+
+            <!-- List of Absent Teachers -->
+            <div class="mt-8">
+                <h3 class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">Senarai Guru Tidak Hadir (Sesi Ini)</h3>
+                <div class="overflow-x-auto rounded-lg border border-gray-200">
+                    <table class="w-full text-sm text-left text-gray-600" id="absentTable">
+                        <thead class="bg-gray-100 text-gray-700 uppercase font-bold">
+                            <tr>
+                                <th class="px-6 py-3">Nama Guru</th>
+                                <th class="px-6 py-3">Sebab</th>
+                                <th class="px-6 py-3">Status</th>
+                                <th class="px-6 py-3 text-center">Tindakan</th>
+                            </tr>
+                        </thead>
+                        <tbody id="absentTableBody">
+                            <tr class="bg-white border-b hover:bg-gray-50"><td colspan="4" class="px-6 py-4 text-center italic text-gray-400">Tiada guru ditambah.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- Step 2: Generation Section -->
+        <section class="glass-panel rounded-xl p-6 md:p-8" id="generationSection">
+            <div class="border-b border-gray-200 pb-4 mb-6 flex justify-between items-center">
+                <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2">
+                    <span class="bg-blue-900 text-white w-8 h-8 flex items-center justify-center rounded-full text-sm">2</span>
+                    Jana Jadual Ganti
+                </h2>
+                <button onclick="generateReliefSchedule()" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg shadow transition flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" /></svg>
+                    Proses Jadual
+                </button>
+            </div>
+
+            <div id="reliefResultsContainer" class="space-y-8">
+                <!-- Relief tables will appear here -->
+                <div class="text-center py-10 text-gray-400">
+                    Sila tambah guru tidak hadir dan tekan butang "Proses Jadual".
+                </div>
+            </div>
+        </section>
+
+        <!-- PDF Action -->
+        <section class="flex justify-center pb-12">
+            <button onclick="downloadPDF()" id="btnDownloadPDF" class="hidden bg-red-600 hover:bg-red-700 text-white font-black py-4 px-10 rounded-xl shadow-lg transform transition hover:scale-105 flex items-center gap-3 text-lg">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                JANA PDF GURU GANTI
+            </button>
+        </section>
+
+    </main>
+
+    <footer class="bg-gray-100 border-t border-gray-200 py-6 mt-auto">
+        <div class="max-w-7xl mx-auto px-4 text-center">
+            <p class="text-gray-600 text-sm font-semibold">Pengurusan Kurikulum SK Sapagaya Kinabatangan</p>
+            <p class="text-gray-400 text-xs mt-1">Kegunaan Dalaman Sahaja &copy; 2025</p>
+        </div>
+    </footer>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        // --- DATA & CONFIGURATION ---
+        
+        const TEACHERS = [
+            "NORAZAM BIN AHMAD", // GB (Admin)
+            "ABDUL AZIM BIN RAMLON", // GPK1 (Admin)
+            "RAZAINI BIN ABD RASHID", // GPK HEM (Admin)
+            "MOHD FIRDAUS BIN SULTAN", // GPK KOKUM (Admin)
+            "MOHD NASRUN BIN ABD SALIN",
+            "MOHD SYAHIRAN BIN ZAMARI",
+            "MOHD SANI BIN MARBAN",
+            "DULCY GARASI",
+            "SOLEHA BINTI JANIUS",
+            "SRI DAYURIYANI BINTI RAMLEE",
+            "NOOR FAIZAH BINTI AMOK",
+            "SCARLET RACHEL JIM"
+        ];
+
+        const ADMINS = [
+            "NORAZAM BIN AHMAD",
+            "ABDUL AZIM BIN RAMLON",
+            "RAZAINI BIN ABD RASHID",
+            "MOHD FIRDAUS BIN SULTAN"
+        ];
+
+        const TIME_SLOTS = [
+            "07:20 - 07:50", "07:50 - 08:20", "08:20 - 08:50", "08:50 - 09:20",
+            "09:20 - 09:50", "09:50 - 10:20", "10:20 - 10:40", "10:40 - 11:10",
+            "11:10 - 11:40", "11:40 - 12:10", "12:10 - 12:40", "12:40 - 13:10"
+        ];
+
+        // Schedule Data: Teacher -> Day (0=Mon, 4=Fri) -> Array of BUSY Slots (1-12)
+        // Data extracted from user PDF/Images.
+        const SCHEDULE = {
+            "NORAZAM BIN AHMAD": {
+                0: [8, 9], 
+                1: [9, 10, 12], 
+                2: [1, 2], 
+                3: [1, 2, 8, 9], 
+                4: [] 
+            },
+            "ABDUL AZIM BIN RAMLON": {
+                0: [5, 6, 8, 9, 10, 11], 
+                1: [1, 2, 5, 6], 
+                2: [8, 9], 
+                3: [2, 3], 
+                4: [3, 4, 8, 9] 
+            },
+            "RAZAINI BIN ABD RASHID": {
+                0: [2, 3, 4, 5, 6, 8, 9, 10], 
+                1: [5, 6], 
+                2: [1, 2], 
+                3: [10, 11], 
+                4: [1, 2, 8, 9] 
+            },
+            "MOHD FIRDAUS BIN SULTAN": {
+                0: [1, 2], 
+                1: [4, 5, 8, 9, 11, 12], 
+                2: [1, 2, 8, 9, 10, 11], 
+                3: [1, 2], 
+                4: [1, 2, 5, 6, 8, 9] 
+            },
+            "MOHD NASRUN BIN ABD SALIN": {
+                0: [5, 6, 8, 9, 12], 
+                1: [2, 3, 8, 9, 12], 
+                2: [1, 5, 6, 8, 9, 10, 11], 
+                3: [1, 2, 3, 5, 6, 8, 9, 11, 12], 
+                4: [8, 9] 
+            },
+            "MOHD SYAHIRAN BIN ZAMARI": {
+                0: [2, 3, 4, 5, 6, 8, 9, 10], 
+                1: [1, 2, 5, 6, 10, 11, 12], 
+                2: [1, 2, 11, 12], 
+                3: [1, 2, 9, 10], 
+                4: [2, 3, 8, 9] 
+            },
+            "MOHD SANI BIN MARBAN": {
+                0: [2, 3, 5, 6, 8, 9, 10, 11], 
+                1: [1, 2, 3, 4, 8, 9, 10, 11], 
+                2: [4, 5, 8, 9, 10], 
+                3: [5, 6, 8, 9], 
+                4: [4, 5] 
+            },
+            "DULCY GARASI": {
+                0: [2, 3, 4, 5, 6], 
+                1: [1, 2, 3, 4], 
+                2: [3, 4, 5, 6], 
+                3: [1, 3, 4, 5, 6], 
+                4: [2, 3, 5, 6] 
+            },
+            "SOLEHA BINTI JANIUS": {
+                0: [4, 5, 8, 9, 12], 
+                1: [1, 2, 4, 5, 6, 8, 9], 
+                2: [2, 3, 5, 6, 8, 9, 10], 
+                3: [1, 2, 3, 5, 6, 8, 9], 
+                4: [1, 2, 3, 5, 6] 
+            },
+            "SRI DAYURIYANI BINTI RAMLEE": {
+                0: [9, 10, 11, 12], 
+                1: [1, 2, 6, 8, 9, 10, 11], 
+                2: [1, 2, 5, 6, 8, 9, 10, 11], 
+                3: [2, 3, 6, 7, 8, 9, 11, 12], 
+                4: [1, 2, 8, 9] 
+            },
+            "NOOR FAIZAH BINTI AMOK": {
+                0: [2, 3, 8, 9, 10, 11, 12], 
+                1: [3, 4, 5, 6, 10, 11], 
+                2: [1, 2, 3], 
+                3: [4, 5, 9, 10], 
+                4: [1, 2, 4, 5, 8, 9] 
+            },
+            "SCARLET RACHEL JIM": {
+                0: [3, 4, 5, 6], 
+                1: [4, 5, 8, 10, 11], 
+                2: [3, 4, 5, 9, 10], 
+                3: [3, 6, 8, 11], 
+                4: [3, 4, 5] 
+            }
+        };
+
+        // State Management
+        let absentTeachersList = [];
+        let generatedData = {}; // Stores the calculation result
+        let currentDayIndex = null; // 0=Mon, etc
+
+        // --- INITIALIZATION ---
+
+        window.onload = function() {
+            // Populate Teacher Dropdown
+            const select = document.getElementById('teacherSelect');
+            TEACHERS.forEach(t => {
+                const opt = document.createElement('option');
+                opt.value = t;
+                opt.textContent = t;
+                select.appendChild(opt);
+            });
+
+            // Set current date
+            const now = new Date();
+            const dateStr = now.toLocaleDateString('ms-MY', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            document.getElementById('current-date').textContent = dateStr;
+            
+            // Set date input to today
+            document.getElementById('dateInput').valueAsDate = now;
+            detectDay();
+        };
+
+        // --- HELPER FUNCTIONS ---
+
+        function detectDay() {
+            const dateVal = document.getElementById('dateInput').value;
+            if(!dateVal) return;
+            
+            const date = new Date(dateVal);
+            const day = date.getDay(); // 0=Sun, 1=Mon...
+            
+            const dayNames = ["Ahad", "Isnin", "Selasa", "Rabu", "Khamis", "Jumaat", "Sabtu"];
+            const msDay = dayNames[day];
+            document.getElementById('dayDisplay').value = msDay;
+
+            // Map standard JS day to our Schedule Index (Mon=0, Fri=4)
+            if(day >= 1 && day <= 5) {
+                currentDayIndex = day - 1;
+            } else {
+                currentDayIndex = null; // Weekend
+                alert("Peringatan: Tarikh yang dipilih adalah hujung minggu (Sabtu/Ahad). Sistem mungkin tidak menjana jadual dengan betul.");
+            }
+
+            // Reset list if day changes, because validation depends on day
+            // Optional: keep list but warn user. For simplicity, we keep list but logic runs on new date.
+        }
+
+        function getTeacherLoad(name, dayIdx) {
+            if(!SCHEDULE[name] || !SCHEDULE[name][dayIdx]) return 0;
+            return SCHEDULE[name][dayIdx].length;
+        }
+
+        // --- CORE LOGIC ---
+
+        function addAbsentTeacher() {
+            const date = document.getElementById('dateInput').value;
+            const teacher = document.getElementById('teacherSelect').value;
+            const reason = document.getElementById('reasonSelect').value;
+
+            if (!date || !teacher) {
+                alert("Sila pilih Tarikh dan Nama Guru.");
+                return;
+            }
+
+            // Check duplicate
+            if(absentTeachersList.some(item => item.name === teacher)) {
+                alert("Guru ini sudah ada dalam senarai.");
+                return;
+            }
+
+            absentTeachersList.push({
+                name: teacher,
+                reason: reason,
+                status: "Perlu Ganti"
+            });
+
+            renderAbsentTable();
+        }
+
+        function removeAbsentTeacher(index) {
+            absentTeachersList.splice(index, 1);
+            renderAbsentTable();
+            // Clear results if any
+            document.getElementById('reliefResultsContainer').innerHTML = '<div class="text-center py-10 text-gray-400">Senarai telah dikemaskini. Sila tekan Proses Jadual semula.</div>';
+            document.getElementById('btnDownloadPDF').classList.add('hidden');
+        }
+
+        function renderAbsentTable() {
+            const tbody = document.getElementById('absentTableBody');
+            tbody.innerHTML = '';
+
+            if (absentTeachersList.length === 0) {
+                tbody.innerHTML = '<tr class="bg-white border-b"><td colspan="4" class="px-6 py-4 text-center italic text-gray-400">Tiada guru ditambah.</td></tr>';
+                return;
+            }
+
+            absentTeachersList.forEach((item, index) => {
+                const tr = document.createElement('tr');
+                tr.className = "bg-white border-b hover:bg-gray-50 transition";
+                tr.innerHTML = `
+                    <td class="px-6 py-4 font-medium text-gray-900">${item.name}</td>
+                    <td class="px-6 py-4">${item.reason}</td>
+                    <td class="px-6 py-4"><span class="bg-red-100 text-red-800 text-xs font-semibold px-2.5 py-0.5 rounded">Perlu Ganti</span></td>
+                    <td class="px-6 py-4 text-center">
+                        <button onclick="removeAbsentTeacher(${index})" class="text-red-600 hover:text-red-900 font-bold text-sm">PADAM</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function generateReliefSchedule() {
+            if(currentDayIndex === null) {
+                alert("Sila pilih hari persekolahan (Isnin - Jumaat).");
+                return;
+            }
+            if(absentTeachersList.length === 0) {
+                alert("Sila tambah guru tidak hadir dahulu.");
+                return;
+            }
+
+            const container = document.getElementById('reliefResultsContainer');
+            container.innerHTML = '';
+            generatedData = {}; // Reset global data storage
+
+            // Track relief count for Admins in this session
+            let adminReliefCount = {};
+            ADMINS.forEach(a => adminReliefCount[a] = 0);
+
+            absentTeachersList.forEach((absentItem, idx) => {
+                const teacherName = absentItem.name;
+                const busySlots = SCHEDULE[teacherName][currentDayIndex] || [];
+                
+                // Sort slots chronologically
+                busySlots.sort((a,b) => a - b);
+
+                // Create Table Structure
+                const wrapper = document.createElement('div');
+                wrapper.className = "bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-8";
+                
+                // Header of Teacher's Table
+                wrapper.innerHTML = `
+                    <div class="bg-blue-50 px-6 py-4 border-b border-blue-100 flex justify-between items-center">
+                        <div>
+                            <h3 class="text-lg font-bold text-blue-900">${teacherName}</h3>
+                            <p class="text-sm text-blue-600">${absentItem.reason}</p>
+                        </div>
+                        <span class="text-xs font-mono bg-blue-200 text-blue-800 px-2 py-1 rounded">${busySlots.length} Waktu</span>
+                    </div>
+                `;
+
+                const table = document.createElement('table');
+                table.className = "w-full text-sm text-left text-gray-600";
+                table.innerHTML = `
+                    <thead class="bg-gray-100 text-gray-700 uppercase font-bold text-xs">
+                        <tr>
+                            <th class="px-4 py-3 w-16">Waktu</th>
+                            <th class="px-4 py-3 w-32">Masa</th>
+                            <th class="px-4 py-3">Guru Ganti Dicadangkan</th>
+                            <th class="px-4 py-3 w-24 text-center">Tindakan</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbody-${idx}"></tbody>
+                `;
+
+                wrapper.appendChild(table);
+                container.appendChild(wrapper);
+
+                const tbody = table.querySelector('tbody');
+
+                // Process each slot
+                busySlots.forEach(slot => {
+                    const row = document.createElement('tr');
+                    row.className = "border-b hover:bg-gray-50";
+
+                    // Algorithm to find candidates
+                    let candidates = [];
+
+                    TEACHERS.forEach(candidate => {
+                        // 1. Cannot be the absent teacher
+                        if (candidate === teacherName) return;
+                        
+                        // 2. Also cannot be other absent teachers (simplification: assume all absent are unavailable)
+                        if (absentTeachersList.some(ab => ab.name === candidate)) return;
+
+                        // 3. Must be free in this slot
+                        const candidateSchedule = SCHEDULE[candidate][currentDayIndex] || [];
+                        if (candidateSchedule.includes(slot)) return;
+
+                        // 4. Exclusion Rule: Teachers with 8, 9, 10 periods today CANNOT replace
+                        const dailyLoad = getTeacherLoad(candidate, currentDayIndex);
+                        if (dailyLoad >= 8) return;
+
+                        // 5. Admin Cap Rule: Check limit (max 3 slots)
+                        // Note: We check current assignment count. 
+                        // However, for the dropdown list, we show them, but maybe flag or put at bottom if full?
+                        // For auto-selection, we filter.
+                        if (ADMINS.includes(candidate) && adminReliefCount[candidate] >= 3) {
+                             // Skip for auto-suggest, but keep in list? For strictness, skip.
+                             return; 
+                        }
+
+                        candidates.push({
+                            name: candidate,
+                            load: dailyLoad,
+                            isAdmin: ADMINS.includes(candidate)
+                        });
+                    });
+
+                    // Sort Candidates: Priority to Lowest Load
+                    candidates.sort((a, b) => a.load - b.load);
+
+                    // Auto-select the best candidate
+                    let bestCandidate = candidates.length > 0 ? candidates[0] : null;
+
+                    // Increment admin count if selected
+                    if(bestCandidate && bestCandidate.isAdmin) {
+                        adminReliefCount[bestCandidate.name]++;
+                    }
+
+                    // Build Dropdown
+                    let selectHTML = `<select class="w-full border-gray-300 rounded text-sm focus:ring-blue-500 candidate-select" data-slot="${slot}" data-absent="${teacherName}">`;
+                    if(!bestCandidate) {
+                        selectHTML += `<option value="" selected class="text-red-500">TIADA GURU FREE</option>`;
+                    }
+                    
+                    // Add selected option first
+                    if(bestCandidate) {
+                        selectHTML += `<option value="${bestCandidate.name}" selected>${bestCandidate.name} (${bestCandidate.load} masa)</option>`;
+                    }
+
+                    // Add others
+                    candidates.forEach(c => {
+                        if(c.name !== (bestCandidate ? bestCandidate.name : '')) {
+                            selectHTML += `<option value="${c.name}">${c.name} (${c.load} masa)</option>`;
+                        }
+                    });
+                    selectHTML += `</select>`;
+
+                    // Time formatting
+                    const timeStr = TIME_SLOTS[slot - 1];
+
+                    row.innerHTML = `
+                        <td class="px-4 py-3 font-bold text-center bg-gray-50">${slot}</td>
+                        <td class="px-4 py-3 font-mono text-xs">${timeStr}</td>
+                        <td class="px-4 py-3">${selectHTML}</td>
+                        <td class="px-4 py-3 text-center">
+                            <button onclick="this.closest('tr').remove()" class="text-gray-400 hover:text-red-600 font-bold text-xs border border-gray-300 px-2 py-1 rounded hover:border-red-600 transition">PADAM</button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            });
+
+            // Show PDF Button
+            document.getElementById('btnDownloadPDF').classList.remove('hidden');
+        }
+
+        // --- PDF GENERATION ---
+
+        async function downloadPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            const dateVal = document.getElementById('dateInput').value;
+            const dateObj = new Date(dateVal);
+            const dateStr = dateObj.toLocaleDateString('ms-MY', { day: 'numeric', month: 'long', year: 'numeric' });
+            const dayStr = document.getElementById('dayDisplay').value;
+
+            // -- Header --
+            // Logo
+            const logoUrl = "https://i.postimg.cc/rw4NFjkh/photo-2025-05-06-02-07-23.jpg";
+            // Note: In a real app, loading images cross-origin for PDF can be tricky without proper CORS headers or Base64.
+            // jspdf handles image urls if they are accessible. postimg usually works.
+            
+            try {
+                doc.addImage(logoUrl, 'JPEG', 15, 10, 20, 20);
+            } catch (e) {
+                console.warn("Logo failed to load", e);
+            }
+
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(14);
+            doc.text("SK SAPAGAYA, KINABATANGAN", 40, 18);
+            doc.setFontSize(11);
+            doc.text("JADUAL GURU GANTI", 40, 25);
+            
+            doc.setFontSize(10);
+            doc.setFont("helvetica", "normal");
+            doc.text(`Tarikh: ${dateStr} (${dayStr})`, 15, 40);
+
+            let yPos = 50;
+
+            // Iterate over generated DOM tables to get final edited values
+            const wrappers = document.querySelectorAll('#reliefResultsContainer > div');
+            
+            wrappers.forEach(wrapper => {
+                const teacherName = wrapper.querySelector('h3').textContent;
+                const reason = wrapper.querySelector('p').textContent;
+                const rows = wrapper.querySelectorAll('tbody tr');
+
+                // Section Header
+                doc.setFontSize(10);
+                doc.setFont("helvetica", "bold");
+                doc.setFillColor(230, 240, 255); // Light Blue
+                doc.rect(14, yPos, 182, 8, 'F');
+                doc.setTextColor(0, 0, 0);
+                doc.text(`${teacherName} - ${reason}`, 16, yPos + 5.5);
+                yPos += 8;
+
+                // Table Body Data
+                const tableBody = [];
+                rows.forEach(row => {
+                    const slot = row.children[0].textContent;
+                    const time = row.children[1].textContent;
+                    const select = row.querySelector('select');
+                    const replacement = select.options[select.selectedIndex].text; // Get selected text
+
+                    // Strip the load info "(X masa)" for cleaner PDF? Or keep it? User asked for name list.
+                    // Let's keep it as is or clean it. "MOHD SANI (2 masa)" -> "MOHD SANI"
+                    const cleanName = replacement.split(' (')[0];
+
+                    tableBody.push([slot, time, cleanName]);
+                });
+
+                doc.autoTable({
+                    startY: yPos,
+                    head: [['Waktu', 'Masa', 'Guru Ganti']],
+                    body: tableBody,
+                    theme: 'grid',
+                    styles: { fontSize: 9, cellPadding: 2 },
+                    headStyles: { fillColor: [40, 40, 40], textColor: 255 },
+                    columnStyles: {
+                        0: { cellWidth: 20, halign: 'center' },
+                        1: { cellWidth: 35 },
+                        2: { cellWidth: 'auto' }
+                    },
+                    margin: { left: 15, right: 15 },
+                });
+
+                yPos = doc.lastAutoTable.finalY + 10;
+                
+                // Page break check
+                if (yPos > 250) {
+                    doc.addPage();
+                    yPos = 20;
+                }
+            });
+
+            // -- Footer / Signature --
+            // Ensure enough space
+            if (yPos > 220) {
+                doc.addPage();
+                yPos = 20;
+            } else {
+                yPos += 10;
+            }
+
+            const signatureUrl = "https://i.postimg.cc/sx7DmWjn/photo-2025-12-07-10-47-51.jpg";
+
+            doc.setFontSize(10);
+            doc.text("Disediakan Oleh,", 15, yPos);
+            
+            yPos += 5;
+            // Add Signature Image
+            try {
+                 // Width about 40, Height auto/20. Centered relative to text block?
+                 // Text is at x=15. Let's place signature at x=15, width=50
+                 doc.addImage(signatureUrl, 'JPEG', 15, yPos, 40, 20); 
+            } catch(e) {
+                doc.text("(Sign Here)", 25, yPos + 10);
+            }
+
+            yPos += 25; // Space for image
+            
+            doc.setFont("helvetica", "bold");
+            doc.text("(SCARLET RACHEL JIM)", 15, yPos);
+            yPos += 5;
+            doc.setFont("helvetica", "normal");
+            doc.text("SETIAUSAHA KURIKULUM", 15, yPos);
+            yPos += 5;
+            doc.text("SK SAPAGAYA, KINABATANGAN", 15, yPos);
+
+            // Save
+            doc.save(`Jadual Guru Ganti ${dateStr}.pdf`);
+        }
+
+    </script>
+</body>
+</html>
